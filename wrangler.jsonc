@@ -1,0 +1,13 @@
+{
+  "name": "cubeworld",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cubeworld-db",
+      "database_id": "583c8752-1d75-4a02-8668-60380a390a65"
+    }
+  ]
+}

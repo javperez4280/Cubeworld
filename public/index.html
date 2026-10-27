@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CubeWorld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Rubik:wght@400;500&display=swap">
+<style>
+/* Layout: mundo 3D a pantalla completa; HUD flotante en los bordes; panel de inicio centrado sobre el mundo vivo */
+:root{
+  --sky:#8ec5e8;
+  --panel:rgba(22,30,24,.84);
+  --paper:#f3efe2;
+  --muted:#b9c2b0;
+  --sun:#f2c14e;
+  --grass:#6aa84f;
+  --display:"Pixelify Sans", ui-monospace, "Courier New", monospace;
+  --body:"Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--sky);color:var(--paper);font-family:var(--body);touch-action:none;-webkit-user-select:none;user-select:none}
+[hidden]{display:none!important}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;pointer-events:none;z-index:2}
+#brand{top:calc(10px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px));font-family:var(--display);font-weight:700;font-size:20px;text-shadow:0 2px 0 rgba(0,0,0,.35)}
+#brand small{display:block;font-family:var(--body);font-weight:400;font-size:12px;color:var(--paper);opacity:.85;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+#tools{top:calc(10px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));pointer-events:auto;display:flex;gap:8px}
+button{font-family:var(--display);font-size:14px;color:var(--paper);background:var(--panel);border:2px solid rgba(243,239,226,.25);border-radius:6px;padding:8px 12px;cursor:pointer}
+button:hover{border-color:var(--sun)}
+button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+#cross{left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px}
+#cross::before,#cross::after{content:"";position:absolute;background:#fff;mix-blend-mode:difference}
+#cross::before{left:8px;top:0;width:2px;height:18px}
+#cross::after{top:8px;left:0;height:2px;width:18px}
+#bar{left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:4px;padding:4px;background:var(--panel);border-radius:8px;pointer-events:auto;max-width:calc(100vw - 24px)}
+.slot{width:42px;height:42px;border:2px solid transparent;border-radius:5px;padding:3px;box-sizing:border-box;cursor:pointer;position:relative;flex:0 0 auto}
+.slot img{width:100%;height:100%;image-rendering:pixelated;display:block;border-radius:2px}
+.slot span{position:absolute;left:3px;top:1px;font-family:var(--display);font-size:10px;text-shadow:0 1px 1px #000}
+.slot.on{border-color:var(--sun)}
+#name{left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));font-family:var(--display);font-size:16px;text-shadow:0 2px 0 rgba(0,0,0,.4);transition:opacity .4s}
+#hint{left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);font-size:13px;background:var(--panel);padding:6px 10px;border-radius:6px;white-space:nowrap}
+#start{position:fixed;inset:0;z-index:5;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:rgba(30,50,40,.25)}
+#start .card,#worlds .card{background:var(--panel);border-radius:10px;padding:22px 24px;max-width:360px;width:100%;box-sizing:border-box;display:grid;gap:14px;border:2px solid rgba(243,239,226,.15)}
+#start h1{font-family:var(--display);font-weight:700;font-size:40px;margin:0;line-height:1;color:var(--sun);text-shadow:0 3px 0 #7a5a1c}
+#start p{margin:0;line-height:1.45;color:var(--muted);font-size:14px}
+#start dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:13px}
+#start dt{font-family:var(--display);color:var(--paper)}
+#start dd{margin:0;color:var(--muted)}
+#play{font-size:18px;padding:12px;background:var(--grass);border-color:#3e7a2c;color:#10200c}
+#play:hover{border-color:var(--sun)}
+.touch-only{display:none}
+body.touch .touch-only{display:block}
+body.touch .desk-only{display:none}
+#stick{left:calc(22px + env(safe-area-inset-left,0px));bottom:calc(80px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;background:rgba(22,30,24,.45);border:2px solid rgba(243,239,226,.3);pointer-events:auto}
+#knob{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:rgba(243,239,226,.7)}
+#pad{right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(80px + env(safe-area-inset-bottom,0px));pointer-events:auto;display:grid;grid-template-columns:repeat(2,64px);gap:10px}
+#pad button{height:64px;padding:0;font-size:13px}
+#pad #bJump{grid-column:1 / span 2;height:52px}
+#worlds{position:fixed;inset:0;z-index:6;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:rgba(20,30,24,.45)}
+#worlds h2{font-family:var(--display);font-size:24px;margin:0;color:var(--sun)}
+#worlds .row{display:flex;gap:8px}
+#worlds input{flex:1;min-width:0;font:inherit;font-size:15px;padding:9px 10px;border-radius:6px;border:2px solid rgba(243,239,226,.25);background:rgba(0,0,0,.3);color:var(--paper)}
+#worlds input:focus-visible{outline:3px solid var(--sun);outline-offset:1px}
+#wList{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:40vh;overflow:auto}
+#wList button{width:100%;display:flex;justify-content:space-between;gap:8px;font-family:var(--body);text-align:left}
+#wList small{color:var(--muted)}
+#wMsg{margin:0;font-size:13px;color:var(--muted);min-height:1.2em}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div class="hud" id="brand">CubeWorld<small>Mundo de bloques</small></div>
+<div class="hud" id="tools"><button id="openWorlds" type="button">Mundos</button><button id="newWorld" type="button">Nuevo mundo</button></div>
+<div id="worlds" hidden>
+  <div class="card">
+    <h2>Mundos guardados</h2>
+    <div class="row"><input id="wName" type="text" maxlength="40" placeholder="Nombre del mundo" autocomplete="off"><button id="wSave" type="button">Guardar</button></div>
+    <p id="wMsg"></p>
+    <ul id="wList"></ul>
+    <button id="wClose" type="button">Volver al juego</button>
+  </div>
+</div>
+<div class="hud" id="cross"></div>
+<div class="hud" id="name"></div>
+<div class="hud" id="hint" hidden>Click para seguir jugando</div>
+<div class="hud" id="bar"></div>
+
+<div class="hud touch-only" id="stick"><div id="knob"></div></div>
+<div class="hud touch-only" id="pad">
+  <button id="bBreak" type="button">Romper</button>
+  <button id="bPlace" type="button">Poner</button>
+  <button id="bJump" type="button">Saltar</button>
+</div>
+
+<div id="start">
+  <div class="card">
+    <h1>CubeWorld</h1>
+    <p>Un mundo de bloques en 3D. Caminá, rompé y construí lo que quieras.</p>
+    <dl class="desk-only">
+      <dt>WASD</dt><dd>Caminar (Shift corre)</dd>
+      <dt>Mouse</dt><dd>Mirar</dd>
+      <dt>Espacio</dt><dd>Saltar</dd>
+      <dt>Click izq.</dt><dd>Romper bloque</dd>
+      <dt>Click der.</dt><dd>Poner bloque</dd>
+      <dt>1–7 / rueda</dt><dd>Elegir bloque</dd>
+    </dl>
+    <dl class="touch-only">
+      <dt>Círculo</dt><dd>Caminar</dd>
+      <dt>Arrastrar</dt><dd>Mirar</dd>
+      <dt>Botones</dt><dd>Saltar, romper y poner</dd>
+    </dl>
+    <button id="play" type="button">Jugar</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+const isTouch = matchMedia('(pointer:coarse)').matches;
+if(isTouch) document.body.classList.add('touch');
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Mundo ---------- */
+const W=56, D=56, H=32;
+const world=new Uint8Array(W*H*D);
+const idx=(x,y,z)=>x+W*(z+D*y);
+const inside=(x,y,z)=>x>=0&&z>=0&&y>=0&&x<W&&z<D&&y<H;
+const getB=(x,y,z)=>inside(x,y,z)?world[idx(x,y,z)]:0;
+const setB=(x,y,z,t)=>{ if(inside(x,y,z)) world[idx(x,y,z)]=t; };
+
+const GRASS=1,DIRT=2,STONE=3,WOOD=4,LEAVES=5,SAND=6,BRICK=7;
+const NAMES={1:'Pasto',2:'Tierra',3:'Piedra',4:'Madera',5:'Hojas',6:'Arena',7:'Ladrillo'};
+
+let seed=(Math.random()*1e9)|0;
+function hash(x,z){let h=Math.imul(x,374761393)^Math.imul(z,668265263)^Math.imul(seed,-1640531535);h=Math.imul(h^(h>>>13),1274126177);h^=h>>>16;return (h>>>0)/4294967296;}
+function vnoise(x,z){const xi=Math.floor(x),zi=Math.floor(z),xf=x-xi,zf=z-zi;const u=xf*xf*(3-2*xf),v=zf*zf*(3-2*zf);const a=hash(xi,zi),b=hash(xi+1,zi),c=hash(xi,zi+1),d=hash(xi+1,zi+1);return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;}
+function fbm(x,z){let s=0,a=1,f=1,n=0;for(let i=0;i<4;i++){s+=vnoise(x*f,z*f)*a;n+=a;a*=.5;f*=2;}return s/n;}
+
+function generate(){
+  world.fill(0);
+  const heights=[];
+  for(let x=0;x<W;x++)for(let z=0;z<D;z++){
+    const h=Math.max(3,Math.min(H-10,Math.floor(4+fbm(x/20,z/20)*20)));
+    heights[x+z*W]=h;
+    const beach=h<=9;
+    for(let y=0;y<=h;y++){
+      let t= y<h-3?STONE : y<h?DIRT : GRASS;
+      if(beach && y>=h-2) t=SAND;
+      setB(x,y,z,t);
+    }
+  }
+  for(let x=3;x<W-3;x++)for(let z=3;z<D-3;z++){
+    const h=heights[x+z*W];
+    if(getB(x,h,z)!==GRASS || hash(x*7+3,z*13+1)>0.018) continue;
+    const th=4+Math.floor(hash(x,z+99)*2);
+    for(let y=1;y<=th;y++) setB(x,h+y,z,WOOD);
+    const top=h+th;
+    for(let dx=-2;dx<=2;dx++)for(let dz=-2;dz<=2;dz++)for(let dy=-1;dy<=2;dy++){
+      const r=Math.abs(dx)+Math.abs(dz)+Math.max(0,dy);
+      if(r>3 || (dx===0&&dz===0&&dy<1)) continue;
+      if(getB(x+dx,top+dy,z+dz)===0) setB(x+dx,top+dy,z+dz,LEAVES);
+    }
+  }
+}
+
+/* ---------- Texturas pixeladas ---------- */
+function canvasTex(fn){
+  const c=document.createElement('canvas');c.width=c.height=16;
+  const g=c.getContext('2d');fn(g);
+  const t=new THREE.CanvasTexture(c);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;
+  return {t,c};
+}
+function px(g,x,y,rgb,v){const k=1+(Math.random()-.5)*v;g.fillStyle=`rgb(${rgb.map(n=>Math.max(0,Math.min(255,n*k|0))).join(',')})`;g.fillRect(x,y,1,1);}
+function speckle(g,rgb,v){for(let y=0;y<16;y++)for(let x=0;x<16;x++)px(g,x,y,rgb,v);}
+
+const T={
+  grassTop:canvasTex(g=>speckle(g,[106,168,79],.28)),
+  dirt:canvasTex(g=>speckle(g,[134,90,58],.32)),
+  grassSide:canvasTex(g=>{speckle(g,[134,90,58],.32);for(let x=0;x<16;x++){const d=3+(Math.random()*3|0);for(let y=0;y<d;y++)px(g,x,y,[106,168,79],.25);}}),
+  stone:canvasTex(g=>{speckle(g,[135,138,142],.22);for(let i=0;i<10;i++)px(g,Math.random()*16|0,Math.random()*16|0,[90,92,96],.1);}),
+  woodSide:canvasTex(g=>{for(let x=0;x<16;x++){const k=x%4===0?.75:1;for(let y=0;y<16;y++)px(g,x,y,[107*k,74*k,43*k],.15);}}),
+  woodTop:canvasTex(g=>{for(let y=0;y<16;y++)for(let x=0;x<16;x++){const r=Math.max(Math.abs(x-7.5),Math.abs(y-7.5))|0;const c=r>=7?[107,74,43]:(r%2?[176,138,90]:[150,112,70]);px(g,x,y,c,.1);}}),
+  leaves:canvasTex(g=>{speckle(g,[63,125,58],.45);for(let i=0;i<18;i++)px(g,Math.random()*16|0,Math.random()*16|0,[35,80,32],.1);}),
+  sand:canvasTex(g=>speckle(g,[226,207,143],.14)),
+  brick:canvasTex(g=>{g.fillStyle='rgb(190,180,165)';g.fillRect(0,0,16,16);for(let row=0;row<4;row++){const off=row%2?4:0;for(let b=-1;b<2;b++){const x0=b*8+off;for(let y=row*4;y<row*4+3;y++)for(let x=x0;x<x0+7;x++)if(x>=0&&x<16)px(g,x,y,[164,72,58],.18);}}}),
+};
+const M=k=>new THREE.MeshLambertMaterial({map:T[k].t});
+const mGT=M('grassTop'),mGS=M('grassSide'),mD=M('dirt'),mWS=M('woodSide'),mWT=M('woodTop');
+const mats={
+  [GRASS]:[mGS,mGS,mGT,mD,mGS,mGS],
+  [DIRT]:mD,[STONE]:M('stone'),
+  [WOOD]:[mWS,mWS,mWT,mWT,mWS,mWS],
+  [LEAVES]:M('leaves'),[SAND]:M('sand'),[BRICK]:M('brick')
+};
+const icons={1:'grassTop',2:'dirt',3:'stone',4:'woodTop',5:'leaves',6:'sand',7:'brick'};
+
+/* ---------- Escena ---------- */
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();
+const SKY=0x8ec5e8;
+scene.background=new THREE.Color(SKY);
+scene.fog=new THREE.Fog(SKY,18,62);
+const camera=new THREE.PerspectiveCamera(72,1,0.05,200);
+camera.rotation.order='YXZ';
+scene.add(new THREE.HemisphereLight(0xe6f4ff,0x5a4a3a,0.8));
+const sun=new THREE.DirectionalLight(0xfff3d6,0.75);sun.position.set(0.6,1,0.35);scene.add(sun);
+
+const boxGeo=new THREE.BoxGeometry(1,1,1);
+let meshes=[];
+const tmp=new THREE.Matrix4();
+function exposed(x,y,z){
+  return !getB(x+1,y,z)||!getB(x-1,y,z)||!getB(x,y+1,z)||(y>0&&!getB(x,y-1,z))||!getB(x,y,z+1)||!getB(x,y,z-1);
+}
+function rebuild(){
+  meshes.forEach(m=>{scene.remove(m);m.dispose&&m.dispose();});
+  meshes=[];
+  const lists={};for(let t=1;t<=7;t++)lists[t]=[];
+  for(let y=0;y<H;y++)for(let z=0;z<D;z++)for(let x=0;x<W;x++){
+    const t=world[idx(x,y,z)];
+    if(t&&exposed(x,y,z))lists[t].push(x,y,z);
+  }
+  for(let t=1;t<=7;t++){
+    const L=lists[t],n=L.length/3;if(!n)continue;
+    const m=new THREE.InstancedMesh(boxGeo,mats[t],n);
+    for(let i=0;i<n;i++){tmp.makeTranslation(L[i*3]+.5,L[i*3+1]+.5,L[i*3+2]+.5);m.setMatrixAt(i,tmp);}
+    m.instanceMatrix.needsUpdate=true;
+    scene.add(m);meshes.push(m);
+  }
+}
+
+/* Nubes */
+const clouds=new THREE.Group();
+const cloudMat=new THREE.MeshLambertMaterial({color:0xffffff,emissive:0xdde8f0,transparent:true,opacity:.92});
+for(let i=0;i<14;i++){
+  const w=6+Math.random()*10,d=4+Math.random()*7;
+  const c=new THREE.Mesh(new THREE.BoxGeometry(w,1.6,d),cloudMat);
+  c.position.set(Math.random()*W*1.6-W*.3,H+6+Math.random()*4,Math.random()*D*1.6-D*.3);
+  clouds.add(c);
+}
+scene.add(clouds);
+
+/* Marco del bloque apuntado */
+const sel=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.004,1.004,1.004)),new THREE.LineBasicMaterial({color:0x111111}));
+sel.visible=false;scene.add(sel);
+
+/* ---------- Jugador ---------- */
+const HW=0.3,PH=1.75,EYE=1.6;
+const P={x:0,y:0,z:0,vx:0,vy:0,vz:0,ground:false};
+let yaw=Math.PI*0.75,pitch=-0.2;
+function solid(x,y,z){ if(x<0||z<0||x>=W||z>=D||y<0)return true; if(y>=H)return false; return world[idx(x,y,z)]!==0; }
+function collides(x,y,z){
+  for(let bx=Math.floor(x-HW);bx<=Math.floor(x+HW-1e-4);bx++)
+  for(let by=Math.floor(y);by<=Math.floor(y+PH-1e-4);by++)
+  for(let bz=Math.floor(z-HW);bz<=Math.floor(z+HW-1e-4);bz++)
+    if(solid(bx,by,bz))return true;
+  return false;
+}
+function spawn(){
+  const x=W/2|0,z=D/2|0;let y=H-1;
+  while(y>0&&!getB(x,y,z))y--;
+  P.x=x+.5;P.z=z+.5;P.y=y+1.01;P.vx=P.vy=P.vz=0;
+}
+
+/* ---------- Entrada ---------- */
+const keys={};
+let selected=GRASS;
+let stick={x:0,y:0};
+let jumpHeld=false;
+const changes=new Map();
+let playing=false, locked=false, lockFailed=false;
+
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  keys[e.code]=true;
+  if(/^Digit[1-7]$/.test(e.code))choose(+e.code.slice(5));
+  if(e.code==='Space')e.preventDefault();
+});
+addEventListener('keyup',e=>{keys[e.code]=false;});
+addEventListener('blur',()=>{for(const k in keys)keys[k]=false;});
+
+function tryLock(){
+  if(isTouch||lockFailed||!canvas.requestPointerLock)return;
+  try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{lockFailed=true;});}catch(e){lockFailed=true;}
+}
+document.addEventListener('pointerlockchange',()=>{
+  locked=document.pointerLockElement===canvas;
+  document.getElementById('hint').hidden=locked||!playing||isTouch||lockFailed;
+});
+document.addEventListener('pointerlockerror',()=>{lockFailed=true;document.getElementById('hint').hidden=true;});
+
+function look(dx,dy,k){
+  yaw-=dx*k;pitch-=dy*k;
+  pitch=Math.max(-1.55,Math.min(1.55,pitch));
+}
+let drag=null;
+canvas.addEventListener('mousedown',e=>{
+  if(isTouch||!playing)return;
+  if(locked){act(e.button===2?'place':'break');return;}
+  drag={x:e.clientX,y:e.clientY,moved:0,b:e.button};
+});
+addEventListener('mousemove',e=>{
+  if(locked){look(e.movementX,e.movementY,0.0024);return;}
+  if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;drag.moved+=Math.abs(dx)+Math.abs(dy);look(dx,dy,0.005);}
+});
+addEventListener('mouseup',()=>{
+  if(drag&&drag.moved<5){ if(lockFailed)act(drag.b===2?'place':'break'); else tryLock(); }
+  drag=null;
+});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('wheel',e=>{e.preventDefault();choose(((selected-1+(e.deltaY>0?1:-1))+7)%7+1);},{passive:false});
+
+/* Táctil */
+const stickEl=document.getElementById('stick'),knob=document.getElementById('knob');
+let stickId=null;
+stickEl.addEventListener('touchstart',e=>{e.preventDefault();stickId=e.changedTouches[0].identifier;moveStick(e.changedTouches[0]);},{passive:false});
+function moveStick(t){
+  const r=stickEl.getBoundingClientRect();let dx=t.clientX-(r.left+60),dy=t.clientY-(r.top+60);
+  const l=Math.hypot(dx,dy),m=46;if(l>m){dx*=m/l;dy*=m/l;}
+  knob.style.transform=`translate(${dx}px,${dy}px)`;stick={x:dx/m,y:dy/m};
+}
+const lookTouches={};
+canvas.addEventListener('touchstart',e=>{e.preventDefault();for(const t of e.changedTouches)lookTouches[t.identifier]={x:t.clientX,y:t.clientY};},{passive:false});
+addEventListener('touchmove',e=>{
+  for(const t of e.changedTouches){
+    if(t.identifier===stickId){moveStick(t);continue;}
+    const L=lookTouches[t.identifier];
+    if(L){look(t.clientX-L.x,t.clientY-L.y,0.006);L.x=t.clientX;L.y=t.clientY;}
+  }
+},{passive:false});
+function endTouch(e){for(const t of e.changedTouches){if(t.identifier===stickId){stickId=null;stick={x:0,y:0};knob.style.transform='';}delete lookTouches[t.identifier];}}
+addEventListener('touchend',endTouch);addEventListener('touchcancel',endTouch);
+const bJump=document.getElementById('bJump');
+bJump.addEventListener('touchstart',e=>{e.preventDefault();jumpHeld=true;},{passive:false});
+bJump.addEventListener('touchend',()=>{jumpHeld=false;});
+document.getElementById('bBreak').addEventListener('touchstart',e=>{e.preventDefault();act('break');},{passive:false});
+document.getElementById('bPlace').addEventListener('touchstart',e=>{e.preventDefault();act('place');},{passive:false});
+
+/* Barra de bloques */
+const bar=document.getElementById('bar'),nameEl=document.getElementById('name');
+let nameTimer;
+for(let t=1;t<=7;t++){
+  const s=document.createElement('div');s.className='slot';s.dataset.t=t;s.title=NAMES[t];
+  const img=document.createElement('img');img.alt=NAMES[t];img.src=T[icons[t]].c.toDataURL();
+  const n=document.createElement('span');n.textContent=t;
+  s.append(img,n);s.addEventListener('click',()=>choose(t));
+  s.addEventListener('touchstart',e=>{e.preventDefault();choose(t);},{passive:false});
+  bar.append(s);
+}
+function choose(t){
+  selected=t;
+  bar.querySelectorAll('.slot').forEach(s=>s.classList.toggle('on',+s.dataset.t===t));
+  nameEl.textContent=NAMES[t];nameEl.style.opacity=1;
+  clearTimeout(nameTimer);nameTimer=setTimeout(()=>nameEl.style.opacity=0,1200);
+}
+
+/* ---------- Apuntar y construir ---------- */
+function raycast(maxD){
+  const o=camera.position,d=new THREE.Vector3();camera.getWorldDirection(d);
+  let x=Math.floor(o.x),y=Math.floor(o.y),z=Math.floor(o.z);
+  const sx=Math.sign(d.x),sy=Math.sign(d.y),sz=Math.sign(d.z);
+  const tdx=Math.abs(1/d.x),tdy=Math.abs(1/d.y),tdz=Math.abs(1/d.z);
+  let tx=d.x?((sx>0?x+1-o.x:o.x-x))*tdx:Infinity;
+  let ty=d.y?((sy>0?y+1-o.y:o.y-y))*tdy:Infinity;
+  let tz=d.z?((sz>0?z+1-o.z:o.z-z))*tdz:Infinity;
+  let px=x,py=y,pz=z,t=0;
+  for(let i=0;i<64&&t<=maxD;i++){
+    if(getB(x,y,z))return{x,y,z,px,py,pz};
+    px=x;py=y;pz=z;
+    if(tx<ty&&tx<tz){x+=sx;t=tx;tx+=tdx;}
+    else if(ty<tz){y+=sy;t=ty;ty+=tdy;}
+    else{z+=sz;t=tz;tz+=tdz;}
+  }
+  return null;
+}
+function act(kind){
+  if(!playing)return;
+  const h=raycast(6);if(!h)return;
+  if(kind==='break'){setB(h.x,h.y,h.z,0);changes.set(idx(h.x,h.y,h.z),0);rebuild();return;}
+  const {px:x,py:y,pz:z}=h;
+  if(!inside(x,y,z)||getB(x,y,z))return;
+  const overlap=x<P.x+HW&&x+1>P.x-HW&&z<P.z+HW&&z+1>P.z-HW&&y<P.y+PH&&y+1>P.y;
+  if(overlap)return;
+  setB(x,y,z,selected);changes.set(idx(x,y,z),selected);rebuild();
+}
+
+/* ---------- Bucle ---------- */
+function resize(){const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+addEventListener('resize',resize);
+
+function step(dt){
+  let fx=0,fz=0;
+  if(keys.KeyW||keys.ArrowUp)fz-=1;if(keys.KeyS||keys.ArrowDown)fz+=1;
+  if(keys.KeyA||keys.ArrowLeft)fx-=1;if(keys.KeyD||keys.ArrowRight)fx+=1;
+  fx+=stick.x;fz+=stick.y;
+  const l=Math.hypot(fx,fz);if(l>1){fx/=l;fz/=l;}
+  const speed=(keys.ShiftLeft||keys.ShiftRight)?7:4.5;
+  const s=Math.sin(yaw),c=Math.cos(yaw);
+  P.vx=(fx*c+fz*s)*speed;
+  P.vz=(-fx*s+fz*c)*speed;
+  if((keys.Space||jumpHeld)&&P.ground)P.vy=8.2;
+  P.vy=Math.max(P.vy-24*dt,-30);
+  const n=Math.ceil(Math.max(Math.abs(P.vx),Math.abs(P.vy),Math.abs(P.vz))*dt/0.04)||1;
+  const h=dt/n;P.ground=false;
+  for(let i=0;i<n;i++){
+    P.x+=P.vx*h;if(collides(P.x,P.y,P.z))P.x-=P.vx*h;
+    P.z+=P.vz*h;if(collides(P.x,P.y,P.z))P.z-=P.vz*h;
+    P.y+=P.vy*h;if(collides(P.x,P.y,P.z)){P.y-=P.vy*h;if(P.vy<0)P.ground=true;P.vy=0;}
+  }
+}
+
+let last=performance.now(),tIdle=0;
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000);last=now;
+  if(playing)step(dt);
+  else{tIdle+=dt;yaw+=dt*0.06;}
+  camera.position.set(P.x,P.y+EYE,P.z);
+  camera.rotation.set(pitch,yaw,0);
+  if(!reduceMotion)clouds.children.forEach(cl=>{cl.position.x+=dt*0.6;if(cl.position.x>W*1.4)cl.position.x=-W*.5;});
+  const hit=playing&&raycast(6);
+  if(hit){sel.visible=true;sel.position.set(hit.x+.5,hit.y+.5,hit.z+.5);}else sel.visible=false;
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+
+function newWorld(){seed=(Math.random()*1e9)|0;changes.clear();generate();rebuild();spawn();}
+document.getElementById('newWorld').addEventListener('click',()=>{newWorld();canvas.focus&&canvas.focus();});
+document.getElementById('play').addEventListener('click',()=>{
+  playing=true;document.getElementById('start').hidden=true;tryLock();
+});
+
+/* ---------- Guardar y cargar (base de datos) ---------- */
+const wPanel=document.getElementById('worlds'),wName=document.getElementById('wName'),wMsg=document.getElementById('wMsg'),wList=document.getElementById('wList');
+function msg(t){wMsg.textContent=t;}
+function openWorlds(){
+  if(document.pointerLockElement)document.exitPointerLock();
+  for(const k in keys)keys[k]=false;
+  wPanel.hidden=false;msg('Cargando lista…');refreshList();
+}
+function closeWorlds(){wPanel.hidden=true;if(playing)tryLock();}
+async function refreshList(){
+  try{
+    const r=await fetch('/api/mundos');if(!r.ok)throw 0;
+    const rows=await r.json();wList.textContent='';
+    msg(rows.length?'Tocá un mundo para cargarlo.':'Todavía no hay mundos guardados.');
+    for(const m of rows){
+      const li=document.createElement('li'),b=document.createElement('button');b.type='button';
+      const n=document.createElement('span');n.textContent=m.nombre;
+      const d=document.createElement('small');d.textContent=new Date(m.actualizado.replace(' ','T')+'Z').toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});
+      b.append(n,d);b.addEventListener('click',()=>loadWorld(m.nombre));li.append(b);wList.append(li);
+    }
+  }catch(e){msg('No se pudo conectar con el servidor. Guardar solo funciona en la versión online.');}
+}
+async function saveWorld(){
+  const nombre=wName.value.trim();
+  if(!nombre){msg('Escribí un nombre para el mundo.');wName.focus();return;}
+  const cambios=[];changes.forEach((t,i)=>cambios.push(i,t));
+  msg('Guardando…');
+  try{
+    const r=await fetch('/api/mundos/'+encodeURIComponent(nombre),{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({semilla:seed,cambios})});
+    if(!r.ok)throw 0;
+    msg('Guardado como "'+nombre+'".');refreshList();
+  }catch(e){msg('No se pudo guardar. Revisá la conexión y probá de nuevo.');}
+}
+async function loadWorld(nombre){
+  msg('Cargando "'+nombre+'"…');
+  try{
+    const r=await fetch('/api/mundos/'+encodeURIComponent(nombre));if(!r.ok)throw 0;
+    const m=await r.json(),c=JSON.parse(m.datos);
+    seed=m.semilla;changes.clear();generate();
+    for(let i=0;i<c.length;i+=2){world[c[i]]=c[i+1];changes.set(c[i],c[i+1]);}
+    rebuild();spawn();wName.value=nombre;
+    if(!playing){playing=true;document.getElementById('start').hidden=true;}
+    closeWorlds();
+  }catch(e){msg('No se pudo cargar ese mundo.');}
+}
+document.getElementById('openWorlds').addEventListener('click',openWorlds);
+document.getElementById('wClose').addEventListener('click',closeWorlds);
+document.getElementById('wSave').addEventListener('click',saveWorld);
+wName.addEventListener('keydown',e=>{if(e.key==='Enter')saveWorld();});
+
+generate();rebuild();spawn();choose(GRASS);nameEl.style.opacity=0;
+resize();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
