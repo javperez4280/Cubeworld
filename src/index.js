@@ -20,7 +20,22 @@ function json(data, status = 200) {
   });
 }
 
+let tablaLista = false;
+async function asegurarTabla(env) {
+  if (tablaLista) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS mundos (
+      nombre TEXT PRIMARY KEY,
+      semilla INTEGER NOT NULL,
+      datos TEXT NOT NULL,
+      actualizado TEXT NOT NULL DEFAULT (datetime('now'))
+    )`
+  ).run();
+  tablaLista = true;
+}
+
 async function api(req, env, url) {
+  await asegurarTabla(env);
   const raw = url.pathname.slice('/api/mundos/'.length);
   const nombre = url.pathname.length > '/api/mundos/'.length ? decodeURIComponent(raw).trim().slice(0, 40) : '';
 

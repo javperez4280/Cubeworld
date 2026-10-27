@@ -6,8 +6,7 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "cubeworld-db",
-      "database_id": "583c8752-1d75-4a02-8668-60380a390a65"
+      "database_name": "cubeworld-db"
     }
   ]
 }
