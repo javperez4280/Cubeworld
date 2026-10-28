@@ -47,16 +47,44 @@ button:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 #start dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:13px}
 #start dt{font-family:var(--display);color:var(--paper)}
 #start dd{margin:0;color:var(--muted)}
-#play{font-size:18px;padding:12px;background:var(--grass);border-color:#3e7a2c;color:#10200c}
+#play,#playOnline{font-size:18px;padding:12px;}
+#play{background:var(--grass);border-color:#3e7a2c;color:#10200c}
 #play:hover{border-color:var(--sun)}
-.touch-only{display:none}
-body.touch .touch-only{display:block}
-body.touch .desk-only{display:none}
+body:not(.touch) .touch-only{display:none!important}
+body.touch .desk-only{display:none!important}
 #stick{left:calc(22px + env(safe-area-inset-left,0px));bottom:calc(80px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;background:rgba(22,30,24,.45);border:2px solid rgba(243,239,226,.3);pointer-events:auto}
 #knob{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:rgba(243,239,226,.7)}
 #pad{right:calc(18px + env(safe-area-inset-right,0px));bottom:calc(80px + env(safe-area-inset-bottom,0px));pointer-events:auto;display:grid;grid-template-columns:repeat(2,64px);gap:10px}
 #pad button{height:64px;padding:0;font-size:13px}
 #pad #bJump{grid-column:1 / span 2;height:52px}
+#online{position:fixed;inset:0;z-index:7;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px;background:rgba(20,30,24,.5);overflow:auto}
+#online .card{background:var(--panel);border-radius:10px;padding:20px 22px;max-width:440px;width:100%;box-sizing:border-box;display:grid;gap:12px;border:2px solid rgba(243,239,226,.15)}
+#online h2{font-family:var(--display);font-size:26px;margin:0;color:var(--sun)}
+#online p{margin:0;font-size:13px;line-height:1.45;color:var(--muted)}
+#online .row{display:flex;gap:8px;flex-wrap:wrap}
+#online .row>*{flex:1 1 auto}
+#online input{min-width:0;font:inherit;font-size:15px;padding:9px 10px;border-radius:6px;border:2px solid rgba(243,239,226,.25);background:rgba(0,0,0,.3);color:var(--paper)}
+#online input:focus-visible{outline:3px solid var(--sun);outline-offset:1px}
+#online .msg{min-height:1.2em;color:var(--sun)}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1}
+.tabs button[aria-pressed="true"]{background:var(--grass);color:#10200c;border-color:#3e7a2c}
+.list{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:42vh;overflow:auto}
+.list li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:rgba(0,0,0,.25)}
+.list .info{flex:1;min-width:0;display:grid;gap:2px}
+.list .info b{font-family:var(--display);font-weight:500;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .info small{color:var(--muted);font-size:12px}
+.list .dot{width:8px;height:8px;border-radius:50%;background:#6b7568;flex:0 0 auto}
+.list .dot.on{background:#7fd35b}
+.list .dot.away{background:var(--sun)}
+.link{background:none;border:none;color:var(--muted);text-decoration:underline;padding:4px;font-family:var(--body);font-size:13px}
+.primary{background:var(--grass);border-color:#3e7a2c;color:#10200c}
+#chatLog{left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(70px + env(safe-area-inset-bottom,0px));display:grid;gap:3px;max-width:min(360px,70vw);font-size:13px}
+#chatLog div{background:rgba(22,30,24,.6);padding:3px 8px;border-radius:4px;transition:opacity .6s}
+#chatLog b{color:var(--sun);font-weight:500}
+#chatBox{left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(70px + env(safe-area-inset-bottom,0px));pointer-events:auto;width:min(360px,calc(100vw - 24px))}
+#chatBox input{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:8px 10px;border-radius:6px;border:2px solid var(--sun);background:rgba(0,0,0,.6);color:var(--paper)}
+body.touch #chatLog{bottom:calc(210px + env(safe-area-inset-bottom,0px))}
 #worlds{position:fixed;inset:0;z-index:6;display:grid;place-items:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:rgba(20,30,24,.45)}
 #worlds h2{font-family:var(--display);font-size:24px;margin:0;color:var(--sun)}
 #worlds .row{display:flex;gap:8px}
@@ -73,7 +101,35 @@ body.touch .desk-only{display:none}
 <canvas id="c"></canvas>
 
 <div class="hud" id="brand">CubeWorld<small>Mundo de bloques</small></div>
-<div class="hud" id="tools"><button id="openWorlds" type="button">Mundos</button><button id="newWorld" type="button">Nuevo mundo</button></div>
+<div class="hud" id="tools"><button id="openWorlds" type="button">Mundos</button><button id="newWorld" type="button">Nuevo mundo</button><button id="chatBtn" type="button" hidden>Chat</button><button id="leave" type="button" hidden>Salir de la partida</button></div>
+<div class="hud" id="chatLog"></div>
+<div class="hud" id="chatBox" hidden><input id="chatIn" type="text" maxlength="120" placeholder="Escribí y apretá Enter" autocomplete="off"></div>
+<div id="online" hidden>
+  <div class="card" id="vLogin">
+    <h2>Jugar en línea</h2>
+    <p>Usá tu cuenta de Bodriostars. Si no tenés, creala acá: sirve para los dos juegos y nadie más puede usar tu nombre.</p>
+    <input id="uName" type="text" maxlength="14" placeholder="Nombre de usuario" autocomplete="username">
+    <input id="uPass" type="password" maxlength="40" placeholder="Contraseña" autocomplete="current-password">
+    <p class="msg" id="loginMsg"></p>
+    <div class="row"><button id="doLogin" class="primary" type="button">Entrar</button><button id="doCreate" type="button">Crear cuenta</button></div>
+    <button class="link" id="backStart1" type="button">Volver</button>
+  </div>
+  <div class="card" id="vLobby" hidden>
+    <h2>Hola, <span id="meName"></span></h2>
+    <div class="tabs"><button id="tabP" type="button" aria-pressed="true">Partidas</button><button id="tabU" type="button" aria-pressed="false">Buscar usuarios</button></div>
+    <div id="pPartidas" style="display:grid;gap:10px">
+      <div class="row"><input id="newName" type="text" maxlength="30" placeholder="Nombre de tu partida"><button id="doNew" class="primary" type="button">Crear partida</button></div>
+      <p class="msg" id="lobbyMsg"></p>
+      <ul class="list" id="pList"></ul>
+    </div>
+    <div id="pUsuarios" style="display:grid;gap:10px" hidden>
+      <input id="uSearch" type="search" maxlength="14" placeholder="Buscar por nombre" autocomplete="off">
+      <p class="msg" id="searchMsg"></p>
+      <ul class="list" id="uList"></ul>
+    </div>
+    <div class="row"><button class="link" id="backStart2" type="button">Volver</button><button class="link" id="logout" type="button">Cerrar sesión</button></div>
+  </div>
+</div>
 <div id="worlds" hidden>
   <div class="card">
     <h2>Mundos guardados</h2>
@@ -112,7 +168,8 @@ body.touch .desk-only{display:none}
       <dt>Arrastrar</dt><dd>Mirar</dd>
       <dt>Botones</dt><dd>Saltar, romper y poner</dd>
     </dl>
-    <button id="play" type="button">Jugar</button>
+    <button id="play" type="button">Jugar solo</button>
+    <button id="playOnline" class="primary" type="button">Jugar en línea</button>
   </div>
 </div>
 
@@ -276,6 +333,7 @@ let playing=false, locked=false, lockFailed=false;
 
 addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
+  if(online&&playing&&(e.code==='KeyT'||e.code==='Enter')){e.preventDefault();openChat();return;}
   keys[e.code]=true;
   if(/^Digit[1-7]$/.test(e.code))choose(+e.code.slice(5));
   if(e.code==='Space')e.preventDefault();
@@ -380,12 +438,12 @@ function raycast(maxD){
 function act(kind){
   if(!playing)return;
   const h=raycast(6);if(!h)return;
-  if(kind==='break'){setB(h.x,h.y,h.z,0);changes.set(idx(h.x,h.y,h.z),0);rebuild();return;}
+  if(kind==='break'){setB(h.x,h.y,h.z,0);changes.set(idx(h.x,h.y,h.z),0);sendBlock(idx(h.x,h.y,h.z),0);rebuild();return;}
   const {px:x,py:y,pz:z}=h;
   if(!inside(x,y,z)||getB(x,y,z))return;
   const overlap=x<P.x+HW&&x+1>P.x-HW&&z<P.z+HW&&z+1>P.z-HW&&y<P.y+PH&&y+1>P.y;
   if(overlap)return;
-  setB(x,y,z,selected);changes.set(idx(x,y,z),selected);rebuild();
+  setB(x,y,z,selected);changes.set(idx(x,y,z),selected);sendBlock(idx(x,y,z),selected);rebuild();
 }
 
 /* ---------- Bucle ---------- */
@@ -418,6 +476,7 @@ function frame(now){
   const dt=Math.min(0.05,(now-last)/1000);last=now;
   if(playing)step(dt);
   else{tIdle+=dt;yaw+=dt*0.06;}
+  netTick(dt);
   camera.position.set(P.x,P.y+EYE,P.z);
   camera.rotation.set(pitch,yaw,0);
   if(!reduceMotion)clouds.children.forEach(cl=>{cl.position.x+=dt*0.6;if(cl.position.x>W*1.4)cl.position.x=-W*.5;});
@@ -482,6 +541,212 @@ document.getElementById('openWorlds').addEventListener('click',openWorlds);
 document.getElementById('wClose').addEventListener('click',closeWorlds);
 document.getElementById('wSave').addEventListener('click',saveWorld);
 wName.addEventListener('keydown',e=>{if(e.key==='Enter')saveWorld();});
+
+/* ---------- En línea ---------- */
+const $=id=>document.getElementById(id);
+let online=false, net=null, netInfo=null, token='', myName='', lastSend=0, dirty=false, lastRebuild=0, lobbyTimer=null;
+const others=new Map();
+function store(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}
+function load(k){try{return localStorage.getItem(k)||'';}catch(e){return '';}}
+token=load('cw_token');myName=load('cw_name');
+
+async function api(path,opt){
+  const r=await fetch(path,opt);let d={};try{d=await r.json();}catch(e){}
+  if(!r.ok&&!d.err)d.err='No se pudo conectar con el servidor.';
+  return d;
+}
+function show(view){
+  $('online').hidden=!view;
+  $('vLogin').hidden=view!=='login';
+  $('vLobby').hidden=view!=='lobby';
+  clearInterval(lobbyTimer);
+  if(view==='lobby'){$('meName').textContent=myName;refreshPartidas();lobbyTimer=setInterval(refreshPartidas,5000);}
+  if(view==='login'){$('uName').value=myName;$('loginMsg').textContent='';setTimeout(()=>$(myName?'uPass':'uName').focus(),50);}
+}
+async function openOnline(){
+  $('start').hidden=true;
+  if(!token){show('login');return;}
+  const d=await api('/api/yo?token='+encodeURIComponent(token));
+  if(d.ok){myName=d.name;show('lobby');}else{token='';store('cw_token',null);show('login');}
+}
+async function login(crear){
+  const name=$('uName').value.trim(),pass=$('uPass').value;
+  if(name.length<2){$('loginMsg').textContent='El nombre tiene que tener al menos 2 letras.';return;}
+  if(pass.length<4){$('loginMsg').textContent='La contraseña tiene que tener al menos 4 caracteres.';return;}
+  $('loginMsg').textContent=crear?'Creando cuenta…':'Entrando…';
+  const d=await api('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,pass,crear})});
+  if(!d.ok){$('loginMsg').textContent=d.err;return;}
+  token=d.token;myName=d.name;store('cw_token',token);store('cw_name',myName);$('uPass').value='';
+  show('lobby');
+}
+function li(title,sub,dotClass,btnText,onClick){
+  const el=document.createElement('li');
+  const dot=document.createElement('span');dot.className='dot '+(dotClass||'');
+  const info=document.createElement('div');info.className='info';
+  const b=document.createElement('b');b.textContent=title;
+  const s=document.createElement('small');s.textContent=sub;
+  info.append(b,s);el.append(dot,info);
+  if(btnText){const bt=document.createElement('button');bt.type='button';bt.textContent=btnText;bt.addEventListener('click',onClick);el.append(bt);}
+  return el;
+}
+async function refreshPartidas(){
+  const d=await api('/api/partidas');
+  const ul=$('pList');
+  if(d.err){$('lobbyMsg').textContent=d.err;return;}
+  ul.textContent='';
+  if(!d.lista.length){$('lobbyMsg').textContent='No hay partidas todavía. Creá la primera.';return;}
+  $('lobbyMsg').textContent='';
+  for(const p of d.lista){
+    const lleno=p.jugadores>=p.max;
+    const sub='Creada por '+p.host+' · '+p.jugadores+'/'+p.max+' jugadores'+(p.nombres.length?' · '+p.nombres.slice(0,4).join(', '):'');
+    ul.append(li(p.nombre,sub,p.jugadores?'on':'',lleno?'Llena':'Entrar',()=>{if(!lleno)joinPartida(p.code);}));
+  }
+}
+async function crearPartida(){
+  $('lobbyMsg').textContent='Creando…';
+  const d=await api('/api/partidas',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token,nombre:$('newName').value})});
+  if(d.err){$('lobbyMsg').textContent=d.err;if(String(d.err).includes('Sesión'))show('login');return;}
+  $('newName').value='';joinPartida(d.code);
+}
+let searchT=null;
+async function buscar(){
+  const q=$('uSearch').value.trim(),ul=$('uList');
+  if(!q){ul.textContent='';$('searchMsg').textContent='';return;}
+  const d=await api('/api/usuarios?q='+encodeURIComponent(q));
+  if(q!==$('uSearch').value.trim())return;
+  ul.textContent='';
+  if(d.err){$('searchMsg').textContent=d.err;return;}
+  $('searchMsg').textContent=d.lista.length?'':'No hay usuarios con ese nombre.';
+  for(const u of d.lista){
+    if(u.partida) ul.append(li(u.name,'En la partida «'+u.partida.nombre+'»','on',u.name===myName?null:'Unirme',()=>joinPartida(u.partida.code)));
+    else if(u.bodrio) ul.append(li(u.name,'Jugando Bodriostars','away'));
+    else ul.append(li(u.name,'Desconectado',''));
+  }
+}
+function tab(t){
+  $('tabP').setAttribute('aria-pressed',t==='p');$('tabU').setAttribute('aria-pressed',t==='u');
+  $('pPartidas').hidden=t!=='p';$('pUsuarios').hidden=t!=='u';
+  if(t==='u')setTimeout(()=>$('uSearch').focus(),50);
+}
+
+/* jugadores de otros */
+function colorDe(n){let h=0;for(const c of n)h=(h*31+c.charCodeAt(0))>>>0;return new THREE.Color().setHSL((h%360)/360,.55,.5);}
+function cartel(n){
+  const c=document.createElement('canvas');c.width=256;c.height=64;const g=c.getContext('2d');
+  g.font='bold 30px sans-serif';const w=Math.min(250,g.measureText(n).width+24);
+  g.fillStyle='rgba(0,0,0,.55)';g.fillRect((256-w)/2,10,w,44);g.fillStyle='#fff';g.textAlign='center';g.textBaseline='middle';g.fillText(n,128,33);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false}));
+  sp.scale.set(2,.5,1);sp.position.y=2.35;return sp;
+}
+function addOther(d){
+  if(others.has(d.name)||d.name===myName)return;
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(.6,1.2,.35),new THREE.MeshLambertMaterial({color:colorDe(d.name)}));body.position.y=.7;
+  const head=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.5),new THREE.MeshLambertMaterial({color:0xe8c39e}));head.position.y=1.55;
+  const eyes=new THREE.Mesh(new THREE.BoxGeometry(.3,.08,.02),new THREE.MeshBasicMaterial({color:0x222222}));eyes.position.set(0,1.6,-.26);
+  g.add(body,head,eyes,cartel(d.name));
+  g.position.set(d.x||0,d.y||0,d.z||0);g.rotation.y=d.yaw||0;
+  scene.add(g);others.set(d.name,{g,t:{x:d.x||0,y:d.y||0,z:d.z||0,yaw:d.yaw||0}});
+}
+function removeOther(n){const o=others.get(n);if(o){scene.remove(o.g);others.delete(n);}}
+function clearOthers(){for(const n of [...others.keys()])removeOther(n);}
+
+function chatLine(name,txt){
+  const el=document.createElement('div');
+  if(name){const b=document.createElement('b');b.textContent=name+': ';el.append(b);}
+  el.append(document.createTextNode(txt));
+  const log=$('chatLog');log.append(el);while(log.children.length>6)log.firstChild.remove();
+  setTimeout(()=>{el.style.opacity=0;setTimeout(()=>el.remove(),700);},9000);
+}
+function openChat(){
+  if(!online)return;
+  if(document.pointerLockElement)document.exitPointerLock();
+  for(const k in keys)keys[k]=false;
+  $('chatBox').hidden=false;$('chatIn').focus();
+}
+function closeChat(){$('chatBox').hidden=true;$('chatIn').value='';tryLock();}
+function sendNet(o){if(net&&net.readyState===1)net.send(JSON.stringify(o));}
+function sendBlock(i,b){if(online)sendNet({t:'bloque',i,b});}
+function setHud(){
+  const n=others.size+1;
+  $('brand').childNodes[0].nodeValue='CubeWorld';
+  $('brand').querySelector('small').textContent=online?('«'+netInfo.nombre+'» · '+n+(n===1?' jugador':' jugadores')):'Mundo de bloques';
+  $('openWorlds').hidden=$('newWorld').hidden=online;
+  $('leave').hidden=$('chatBtn').hidden=!online;
+}
+
+function joinPartida(code){
+  if(net){try{net.close();}catch(e){}}
+  $('lobbyMsg').textContent='Entrando a la partida…';
+  const ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/api/partida/'+code+'?token='+encodeURIComponent(token));
+  net=ws;let entro=false;
+  ws.onmessage=ev=>{
+    let m;try{m=JSON.parse(ev.data);}catch(e){return;}
+    if(m.t==='init'){
+      entro=true;online=true;netInfo=m;myName=m.yo;
+      seed=m.seed;changes.clear();generate();
+      for(let i=0;i<m.cambios.length;i+=2)world[m.cambios[i]]=m.cambios[i+1];
+      rebuild();spawn();clearOthers();m.jugadores.forEach(addOther);
+      show(null);$('start').hidden=true;$('worlds').hidden=true;playing=true;setHud();tryLock();
+      chatLine(null,'Entraste a «'+m.nombre+'». '+(isTouch?'Tocá Chat para hablar.':'Apretá T para chatear.'));
+    }else if(m.t==='pos'){
+      if(!others.has(m.name))addOther(m);
+      const o=others.get(m.name);if(o)o.t=m;
+    }else if(m.t==='bloque'){world[m.i]=m.b;dirty=true;}
+    else if(m.t==='entra'){addOther({name:m.name,x:P.x,y:P.y,z:P.z});setHud();chatLine(null,m.name+' entró a la partida.');}
+    else if(m.t==='sale'){removeOther(m.name);setHud();chatLine(null,m.name+' salió de la partida.');}
+    else if(m.t==='chat'){chatLine(m.name,m.txt);}
+  };
+  ws.onclose=ev=>{
+    if(net!==ws)return;
+    net=null;
+    const estaba=online;online=false;clearOthers();
+    if(!entro){$('lobbyMsg').textContent='No se pudo entrar. La partida puede estar llena o tu sesión vencida.';return;}
+    if(estaba){
+      playing=false;if(document.pointerLockElement)document.exitPointerLock();
+      newWorld();setHud();show('lobby');
+      $('lobbyMsg').textContent=ev.code===4000?'Entraste a esa partida desde otro lado.':(ev.code===1000?'':'Se cortó la conexión con la partida.');
+    }
+  };
+}
+function leavePartida(){
+  const ws=net;net=null;online=false;
+  if(ws){try{ws.close(1000);}catch(e){}}
+  clearOthers();playing=false;if(document.pointerLockElement)document.exitPointerLock();
+  newWorld();setHud();show('lobby');
+}
+function netTick(dt){
+  if(!online)return;
+  const now=performance.now();
+  if(now-lastSend>100){lastSend=now;sendNet({t:'pos',x:P.x,y:P.y,z:P.z,yaw});}
+  if(dirty&&now-lastRebuild>120){dirty=false;lastRebuild=now;rebuild();}
+  const k=Math.min(1,dt*10);
+  others.forEach(o=>{
+    const g=o.g,t=o.t;
+    g.position.x+=(t.x-g.position.x)*k;g.position.y+=(t.y-g.position.y)*k;g.position.z+=(t.z-g.position.z)*k;
+    let dy=t.yaw-g.rotation.y;dy=Math.atan2(Math.sin(dy),Math.cos(dy));g.rotation.y+=dy*k;
+  });
+}
+
+$('playOnline').addEventListener('click',openOnline);
+$('doLogin').addEventListener('click',()=>login(false));
+$('doCreate').addEventListener('click',()=>login(true));
+$('uPass').addEventListener('keydown',e=>{if(e.key==='Enter')login(false);});
+$('uName').addEventListener('keydown',e=>{if(e.key==='Enter')$('uPass').focus();});
+$('backStart1').addEventListener('click',()=>{show(null);$('start').hidden=false;});
+$('backStart2').addEventListener('click',()=>{show(null);$('start').hidden=false;});
+$('logout').addEventListener('click',()=>{token='';store('cw_token',null);show('login');});
+$('doNew').addEventListener('click',crearPartida);
+$('newName').addEventListener('keydown',e=>{if(e.key==='Enter')crearPartida();});
+$('tabP').addEventListener('click',()=>tab('p'));
+$('tabU').addEventListener('click',()=>tab('u'));
+$('uSearch').addEventListener('input',()=>{clearTimeout(searchT);searchT=setTimeout(buscar,250);});
+$('leave').addEventListener('click',leavePartida);
+$('chatBtn').addEventListener('click',openChat);
+$('chatIn').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){const t=$('chatIn').value.trim();if(t)sendNet({t:'chat',txt:t});closeChat();}
+  if(e.key==='Escape')closeChat();
+});
 
 generate();rebuild();spawn();choose(GRASS);nameEl.style.opacity=0;
 resize();requestAnimationFrame(frame);
