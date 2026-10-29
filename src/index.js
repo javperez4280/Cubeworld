@@ -19,6 +19,14 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 const lobby = env => env.LOBBY.get(env.LOBBY.idFromName('global'));
 const cuentas = env => env.CUENTAS.get(env.CUENTAS.idFromName('global'));
 const post = (stub, path, body) => stub.fetch('https://interno' + path, { method: 'POST', body: JSON.stringify(body) });
+const PJS = ['brasa', 'chispa', 'vela', 'filo', 'tosca', 'ronin'];   // personajes de Bodriostars
+async function tengoDe(env, name) {                                   // personajes que esa cuenta compró
+  try {
+    const r = await (await post(cuentas(env), '/entrar', { name })).json();
+    const t = Array.isArray(r.tengo) ? r.tengo.filter(k => PJS.includes(k)) : [];
+    return t.length ? t : ['brasa'];
+  } catch (e) { return ['brasa']; }
+}
 
 /* ================= el Worker ================= */
 export default {
@@ -35,10 +43,14 @@ export default {
         const c = await r.json();
         if (c.err) return json({ err: c.err });
         const s = await (await post(lobby(env), '/sesion', { name: c.name })).json();
-        return json({ ok: true, name: c.name, nueva: !!c.nueva, token: s.token });
+        return json({ ok: true, name: c.name, nueva: !!c.nueva, token: s.token, tengo: await tengoDe(env, c.name) });
       }
 
-      if (p === '/api/yo') return lobby(env).fetch('https://interno/quien?token=' + encodeURIComponent(url.searchParams.get('token') || ''));
+      if (p === '/api/yo') {
+        const q = await (await lobby(env).fetch('https://interno/quien?token=' + encodeURIComponent(url.searchParams.get('token') || ''))).json();
+        if (!q.ok) return json(q, 401);
+        return json({ ok: true, name: q.name, tengo: await tengoDe(env, q.name) });
+      }
 
       if (p === '/api/partidas' && req.method === 'GET') return lobby(env).fetch('https://interno/partidas');
       if (p === '/api/partidas' && req.method === 'POST') {
@@ -202,16 +214,19 @@ export class Mundo {
 
     const par = new WebSocketPair();
     this.ctx.acceptWebSocket(par[1]);
-    par[1].serializeAttachment({ name: q.name, x: 0, y: 0, z: 0, yaw: 0 });
+    const tengo = await tengoDe(this.env, q.name);
+    const pedido = url.searchParams.get('pj');
+    const pj = tengo.includes(pedido) ? pedido : tengo[0];
+    par[1].serializeAttachment({ name: q.name, pj, x: 0, y: 0, z: 0, yaw: 0 });
 
     const cambios = [];
     for (const f of this.sql.exec('SELECT i, b FROM cambios')) cambios.push(f.i, f.b);
     this.enviar(par[1], {
-      t: 'init', yo: q.name, code, nombre: partida.nombre, host: partida.host,
+      t: 'init', yo: q.name, pj, code, nombre: partida.nombre, host: partida.host,
       seed: Number(this.meta('seed')), cambios,
       jugadores: abiertas.map(w => this.datos(w)).filter(d => d.name),
     });
-    this.todos({ t: 'entra', name: q.name }, par[1]);
+    this.todos({ t: 'entra', name: q.name, pj }, par[1]);
     await this.avisarLobby();
     return new Response(null, { status: 101, webSocket: par[0] });
   }
@@ -224,7 +239,7 @@ export class Mundo {
     const num = v => (typeof v === 'number' && isFinite(v) ? Math.round(v * 100) / 100 : 0);
 
     if (m.t === 'pos') {
-      const d = { name: yo.name, x: num(m.x), y: num(m.y), z: num(m.z), yaw: num(m.yaw) };
+      const d = { name: yo.name, pj: yo.pj, x: num(m.x), y: num(m.y), z: num(m.z), yaw: num(m.yaw) };
       ws.serializeAttachment(d);
       this.todos({ t: 'pos', ...d }, ws);
     } else if (m.t === 'bloque') {
