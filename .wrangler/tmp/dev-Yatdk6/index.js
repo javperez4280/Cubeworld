@@ -29,16 +29,6 @@ var lobby = /* @__PURE__ */ __name((env) => env.LOBBY.get(env.LOBBY.idFromName("
 var cuentas = /* @__PURE__ */ __name((env) => env.CUENTAS.get(env.CUENTAS.idFromName("global")), "cuentas");
 var post = /* @__PURE__ */ __name((stub, path, body) => stub.fetch("https://interno" + path, { method: "POST", body: JSON.stringify(body) }), "post");
 var PJS = ["brasa", "chispa", "vela", "filo", "tosca", "ronin"];
-async function tengoDe(env, name) {
-  try {
-    const r = await (await post(cuentas(env), "/entrar", { name })).json();
-    const t = Array.isArray(r.tengo) ? r.tengo.filter((k) => PJS.includes(k)) : [];
-    return t.length ? t : ["brasa"];
-  } catch (e) {
-    return ["brasa"];
-  }
-}
-__name(tengoDe, "tengoDe");
 var src_default = {
   async fetch(req, env) {
     const url = new URL(req.url);
@@ -52,12 +42,12 @@ var src_default = {
         const c = await r.json();
         if (c.err) return json({ err: c.err });
         const s = await (await post(lobby(env), "/sesion", { name: c.name })).json();
-        return json({ ok: true, name: c.name, nueva: !!c.nueva, token: s.token, tengo: await tengoDe(env, c.name) });
+        return json({ ok: true, name: c.name, nueva: !!c.nueva, token: s.token });
       }
       if (p === "/api/yo") {
         const q = await (await lobby(env).fetch("https://interno/quien?token=" + encodeURIComponent(url.searchParams.get("token") || ""))).json();
         if (!q.ok) return json(q, 401);
-        return json({ ok: true, name: q.name, tengo: await tengoDe(env, q.name) });
+        return json({ ok: true, name: q.name });
       }
       if (p === "/api/partidas" && req.method === "GET") return lobby(env).fetch("https://interno/partidas");
       if (p === "/api/partidas" && req.method === "POST") {
@@ -234,9 +224,8 @@ var Mundo = class {
     this.setMeta("code", code);
     const par = new WebSocketPair();
     this.ctx.acceptWebSocket(par[1]);
-    const tengo = await tengoDe(this.env, q.name);
     const pedido = url.searchParams.get("pj");
-    const pj = tengo.includes(pedido) ? pedido : tengo[0];
+    const pj = PJS.includes(pedido) ? pedido : "brasa";
     par[1].serializeAttachment({ name: q.name, pj, x: 0, y: 0, z: 0, yaw: 0 });
     const cambios = [];
     for (const f of this.sql.exec("SELECT i, b FROM cambios")) cambios.push(f.i, f.b);
